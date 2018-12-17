@@ -67,7 +67,7 @@ extern uint8_t glcd19x21[];				// declare which fonts we will be using
 #elif DISPLAY_X == 800
 
 const unsigned int MaxHeaters = 7;
-#define MaxAxes (6)
+#define MaxAxes (3)
 
 const PixelNumber margin = 4;
 const PixelNumber textButtonMargin = 1;
