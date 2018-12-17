@@ -730,6 +730,59 @@ void CreateTemperatureGrid(const ColourScheme& colours)
 	}
 }
 
+// Create the grid of heater icons and temperatures
+void CreateCNCGrid(const ColourScheme& colours)
+{
+	// Add the emergency stop button
+	DisplayField::SetDefaultColours(colours.stopButtonTextColour, colours.stopButtonBackColour);
+	mgr.AddField(new TextButton(row2, margin, bedColumn - fieldSpacing - margin - 16, strings->stop, evEmergencyStop));
+
+	// Add the labels and the debug field
+	DisplayField::SetDefaultColours(colours.labelTextColour, colours.defaultBackColour);
+	mgr.AddField(debugField = new StaticTextField(row1 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Left, "debug"));
+//	mgr.AddField(new StaticTextField(row3 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Right, strings->current));
+//	mgr.AddField(new StaticTextField(row4 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Right, strings->active));
+//	mgr.AddField(new StaticTextField(row5 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Right, strings->standby));
+
+	// Add the grid
+	for (unsigned int i = 0; i < MaxHeaters; ++i)
+	{
+		PixelNumber column = ((tempButtonWidth + fieldSpacing) * i) + bedColumn;
+
+		// Add the icon button
+		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
+		SingleButton *b = new IconButton(row2, column, tempButtonWidth, heaterIcons[i], evSelectTool, i);
+		b->Show(false);
+		toolButtons[i] = b;
+		mgr.AddField(b);
+
+//		// Add the current temperature field
+//		DisplayField::SetDefaultColours(colours.infoTextColour, colours.defaultBackColour);
+//		FloatField *f = new FloatField(row3 + labelRowAdjust, column, tempButtonWidth, TextAlignment::Centre, 1);
+//		f->SetValue(0.0);
+//		f->Show(false);
+//		currentTemps[i] = f;
+//		mgr.AddField(f);
+//
+//		// Add the active temperature button
+//		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
+//		IntegerButton *ib = new IntegerButton(row4, column, tempButtonWidth);
+//		ib->SetEvent(evAdjustActiveTemp, i);
+//		ib->SetValue(0);
+//		ib->Show(false);
+//		activeTemps[i] = ib;
+//		mgr.AddField(ib);
+
+//		// Add the standby temperature button
+//		ib = new IntegerButton(row5, column, tempButtonWidth);
+//		ib->SetEvent(evAdjustStandbyTemp, i);
+//		ib->SetValue(0);
+//		ib->Show(false);
+//		standbyTemps[i] = ib;
+//		mgr.AddField(ib);
+	}
+}
+
 // Create the extra fields for the Control tab
 void CreateControlTabFields(const ColourScheme& colours)
 {
@@ -958,7 +1011,8 @@ void CreateMainPages(uint32_t language, const ColourScheme& colours)
 	DisplayField::SetDefaultColours(colours.titleBarTextColour, colours.titleBarBackColour);
 	mgr.AddField(nameField = new StaticTextField(row1, 0, DisplayX - statusFieldWidth, TextAlignment::Centre, machineName.c_str()));
 	mgr.AddField(statusField = new StaticTextField(row1, DisplayX - statusFieldWidth, statusFieldWidth, TextAlignment::Right, nullptr));
-	CreateTemperatureGrid(colours);
+	//CreateTemperatureGrid(colours);
+	CreateCNCGrid(colours);
 	commonRoot = mgr.GetRoot();		// save the root of fields that we display on more than one page
 
 	// Create the pages
@@ -1865,6 +1919,39 @@ namespace UI
 						{
 							SerialIo::SendChar('T');
 							SerialIo::SendInt(head - 1);
+							SerialIo::SendChar('\n');
+						}
+					}
+				}
+				break;
+
+			case evSelectTool:
+				{
+					int tool = bp.GetIParam();
+//					if (head == 0)
+//					{
+//						if (heaterStatus[0] == 2)			// if bed is active
+//						{
+//							SerialIo::SendString("M144\n");
+//						}
+//						else
+//						{
+//							SerialIo::SendString("M140 S");
+//							SerialIo::SendInt(activeTemps[0]->GetValue());
+//							SerialIo::SendChar('\n');
+//						}
+//					}
+//					else if (head < (int)MaxHeaters)
+					if (tool < (int)MaxHeaters)
+					{
+						if (heaterStatus[tool] == 2)		// if tool is active
+						{
+							SerialIo::SendString("T-1\n");
+						}
+						else
+						{
+							SerialIo::SendChar('T');
+							SerialIo::SendInt(tool);
 							SerialIo::SendChar('\n');
 						}
 					}
