@@ -760,6 +760,7 @@ void CreateCNCGrid(const ColourScheme& colours)
 void CreateCNCControlTabFields(const ColourScheme& colours)
 {
 	mgr.SetRoot(commonRoot);
+	PixelNumber homeButtonWidth = 40;
 
 	DisplayField::SetDefaultColours(colours.infoTextColour, colours.infoBackColour);
 	PixelNumber xyFieldWidth = bedColumn - fieldSpacing - margin - 16;
@@ -775,22 +776,35 @@ void CreateCNCControlTabFields(const ColourScheme& colours)
 	mgr.AddField(zProbe = new TextField(row6, margin, xyFieldWidth, TextAlignment::Right, "P", zprobeBuf.c_str()));
 
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
-	homeAllButton = AddIconButton(row7p7, 0, MaxAxes + 2, IconHomeAll, evSendCommand, "G28");
-	homeButtons[0] = AddIconButton(row7p7, 1, MaxAxes + 2, IconHomeX, evSendCommand, "G28 X0");
-	homeButtons[1] = AddIconButton(row7p7, 2, MaxAxes + 2, IconHomeY, evSendCommand, "G28 Y0");
-	homeButtons[2] = AddIconButton(row7p7, 3, MaxAxes + 2, IconHomeZ, evSendCommand, "G28 Z0");
-#if MaxAxes > 3
-	homeButtons[3] = AddIconButton(row7p7, 4, MaxAxes + 2, IconHomeU, evSendCommand, "G28 U0");
-	homeButtons[3]->Show(false);
-#endif
-#if MaxAxes > 4
-	homeButtons[4] = AddIconButton(row7p7, 5, MaxAxes + 2, IconHomeV, evSendCommand, "G28 V0");
-	homeButtons[4]->Show(false);
-#endif
-#if MaxAxes > 5
-	homeButtons[5] = AddIconButton(row7p7, 6, MaxAxes + 2, IconHomeW, evSendCommand, "G28 W0");
-	homeButtons[5]->Show(false);
-#endif
+	IconButton *g = new IconButton(row3-2, 2*margin+xyFieldWidth, homeButtonWidth, IconHomeX, evSendCommand, "G28 X0");
+	homeButtons[0] = g;
+	mgr.AddField(g);
+	g = new IconButton(row4-2, 2*margin+xyFieldWidth, homeButtonWidth, IconHomeY, evSendCommand, "G28 Y0");
+	homeButtons[1] = g;
+	mgr.AddField(g);
+	g = new IconButton(row5-2, 2*margin+xyFieldWidth, homeButtonWidth, IconHomeZ, evSendCommand, "G28 Z0");
+	homeButtons[2] = g;
+	mgr.AddField(g);
+	homeAllButton = g;
+	g = new IconButton(row6-2, 2*margin+xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "G28");
+	mgr.AddField(g);
+
+//	homeAllButton = AddIconButton(row6, margin, homeButtonWidth, IconHomeAll, evSendCommand, "G28");
+//	homeButtons[0] = AddIconButton(row3, margin, homeButtonWidth, IconHomeX, evSendCommand, "G28 X0");
+//	homeButtons[1] = AddIconButton(row4, margin, homeButtonWidth, IconHomeY, evSendCommand, "G28 Y0");
+//	homeButtons[2] = AddIconButton(row5, margin, homeButtonWidth, IconHomeZ, evSendCommand, "G28 Z0");
+//#if MaxAxes > 3
+//	homeButtons[3] = AddIconButton(row7p7, 4, MaxAxes + 2, IconHomeU, evSendCommand, "G28 U0");
+//	homeButtons[3]->Show(false);
+//#endif
+//#if MaxAxes > 4
+//	homeButtons[4] = AddIconButton(row7p7, 5, MaxAxes + 2, IconHomeV, evSendCommand, "G28 V0");
+//	homeButtons[4]->Show(false);
+//#endif
+//#if MaxAxes > 5
+//	homeButtons[5] = AddIconButton(row7p7, 6, MaxAxes + 2, IconHomeW, evSendCommand, "G28 W0");
+//	homeButtons[5]->Show(false);
+//#endif
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
 	bedCompButton = AddIconButton(row7p7, MaxAxes + 1, MaxAxes + 2, IconBedComp, evSendCommand, "G32");
 
