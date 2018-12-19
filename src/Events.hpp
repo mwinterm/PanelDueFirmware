@@ -21,7 +21,7 @@ enum Event : uint8_t
 	evSelectHead, evAdjustActiveTemp, evAdjustStandbyTemp,
 
 	// Tool control
-    evSelectTool,
+    evSelectTool, evBedCompensationOnOff, evSpindleOnOff,
 
 	// Control functions
 	evMovePopup, evExtrudePopup, evFan, evListMacros,

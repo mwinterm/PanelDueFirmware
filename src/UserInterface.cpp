@@ -65,7 +65,7 @@ static String<controlPageMacroTextLength> controlPageMacroText[NumControlPageMac
 static PopupWindow *setTempPopup, *movePopup, *extrudePopup, *fileListPopup, *macrosPopup, *fileDetailPopup, *baudPopup, *volumePopup, *areYouSurePopup, *keyboardPopup, *languagePopup, *coloursPopup;
 static StaticTextField *areYouSureTextField, *areYouSureQueryField;
 static DisplayField *baseRoot, *commonRoot, *controlRoot, *printRoot, *messageRoot, *setupRoot;
-static SingleButton *homeButtons[MaxAxes], *toolButtons[MaxHeaters], *homeAllButton, *bedCompButton;
+static SingleButton *homeButtons[MaxAxes], *toolButtons[MaxHeaters], *homeAllButton, *bedCompButton, *spindleButton;
 static FloatField *axisPos[MaxAxes];
 static FloatField *currentTemps[MaxHeaters];
 static FloatField *fpHeightField, *fpLayerHeightField, *babystepOffsetField;
@@ -123,6 +123,10 @@ int32_t alertMode = -1;									// the mode of the current alert, or -1 if no al
 uint32_t alertTicks = 0;
 uint32_t whenAlertReceived;
 bool displayingResponse = false;						// true if displaying a response
+
+static uint32_t spindleOnOff = 0;                       //for CNC
+static uint32_t spindleRPM = 1000;                       //for CNC defines the spindle RPM
+
 
 class StandardPopupWindow : public PopupWindow
 {
@@ -789,22 +793,19 @@ void CreateCNCControlTabFields(const ColourScheme& colours)
 	g = new IconButton(row6-2, 2*margin+xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "G28");
 	mgr.AddField(g);
 
-//	homeAllButton = AddIconButton(row6, margin, homeButtonWidth, IconHomeAll, evSendCommand, "G28");
-//	homeButtons[0] = AddIconButton(row3, margin, homeButtonWidth, IconHomeX, evSendCommand, "G28 X0");
-//	homeButtons[1] = AddIconButton(row4, margin, homeButtonWidth, IconHomeY, evSendCommand, "G28 Y0");
-//	homeButtons[2] = AddIconButton(row5, margin, homeButtonWidth, IconHomeZ, evSendCommand, "G28 Z0");
-//#if MaxAxes > 3
-//	homeButtons[3] = AddIconButton(row7p7, 4, MaxAxes + 2, IconHomeU, evSendCommand, "G28 U0");
-//	homeButtons[3]->Show(false);
-//#endif
-//#if MaxAxes > 4
-//	homeButtons[4] = AddIconButton(row7p7, 5, MaxAxes + 2, IconHomeV, evSendCommand, "G28 V0");
-//	homeButtons[4]->Show(false);
-//#endif
-//#if MaxAxes > 5
-//	homeButtons[5] = AddIconButton(row7p7, 6, MaxAxes + 2, IconHomeW, evSendCommand, "G28 W0");
-//	homeButtons[5]->Show(false);
-//#endif
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
+	TextButton *h = new TextButton(row3-2, 3*margin+xyFieldWidth+homeButtonWidth, 2*homeButtonWidth, "SetX", evSendCommand, "G10 L20 X0");
+	mgr.AddField(h);
+	h = new TextButton(row4-2, 3*margin+xyFieldWidth+homeButtonWidth, 2*homeButtonWidth, "SetY", evSendCommand, "G10 L20 Y0");
+	mgr.AddField(h);
+	h = new TextButton(row5-2, 3*margin+xyFieldWidth+homeButtonWidth, 2*homeButtonWidth, "SetZ", evSendCommand, "G10 L20 Z0");
+	mgr.AddField(h);
+	h = new TextButton(row6-2, 3*margin+xyFieldWidth+homeButtonWidth, 2*homeButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
+	mgr.AddField(h);
+
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
+	spindleButton = AddTextButton(row3p7, MaxAxes + 1, MaxAxes + 2, "Spindle", evSpindleOnOff, " ");
+
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
 	bedCompButton = AddIconButton(row7p7, MaxAxes + 1, MaxAxes + 2, IconBedComp, evSendCommand, "G32");
 
@@ -1986,20 +1987,7 @@ namespace UI
 			case evSelectTool:
 				{
 					int tool = bp.GetIParam();
-//					if (head == 0)
-//					{
-//						if (heaterStatus[0] == 2)			// if bed is active
-//						{
-//							SerialIo::SendString("M144\n");
-//						}
-//						else
-//						{
-//							SerialIo::SendString("M140 S");
-//							SerialIo::SendInt(activeTemps[0]->GetValue());
-//							SerialIo::SendChar('\n');
-//						}
-//					}
-//					else if (head < (int)MaxHeaters)
+
 					if (tool < (int)MaxHeaters)
 					{
 						if (heaterStatus[tool] == 2)		// if tool is active
@@ -2015,6 +2003,25 @@ namespace UI
 					}
 				}
 				break;
+
+			case evSpindleOnOff:
+			    {
+			    	if (spindleOnOff)
+			    	{
+			    		SerialIo::SendString("M5\n");
+			    		spindleOnOff = false;
+			    		spindleButton->SetColours(colours->buttonTextColour, colours->buttonStopped);
+			    	}
+			    	else
+			    	{
+			    		SerialIo::SendString("M3 S");
+			    		SerialIo::SendInt(int(spindleRPM));
+			    		SerialIo::SendChar('\n');
+			    		spindleOnOff = true;
+			    		spindleButton->SetColours(colours->buttonTextColour, colours->buttonRunning);
+			    	}
+			    }
+			    break;
 
 			case evFile:
 				{

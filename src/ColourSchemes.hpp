@@ -75,6 +75,8 @@ struct ColourScheme
 	Colour pauseButtonBackColour;
 	Colour resumeButtonBackColour;
 	Colour resetButtonBackColour;
+	Colour buttonRunning;
+	Colour buttonStopped;
 
 	Colour progressBarColour;
 	Colour progressBarBackColour;

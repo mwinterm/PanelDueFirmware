@@ -54,6 +54,8 @@ const ColourScheme colourSchemes[NumColourSchemes] =
 		.pauseButtonBackColour = lightOrange,
 		.resumeButtonBackColour = lightYellow,
 		.resetButtonBackColour = lightRed,
+		.buttonRunning = lightGreen,
+		.buttonStopped = white,
 
 		.progressBarColour = midGreen,
 		.progressBarBackColour = white,
@@ -104,6 +106,8 @@ const ColourScheme colourSchemes[NumColourSchemes] =
 		.pauseButtonBackColour = darkOrange,
 		.resumeButtonBackColour = darkYellow,
 		.resetButtonBackColour = darkRed,
+		.buttonRunning = green,
+		.buttonStopped = white,
 
 		.progressBarColour = midGreen,
 		.progressBarBackColour = black,
