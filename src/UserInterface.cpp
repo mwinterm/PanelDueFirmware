@@ -740,9 +740,6 @@ void CreateCNCGrid(const ColourScheme& colours)
 	// Add the labels and the debug field
 	DisplayField::SetDefaultColours(colours.labelTextColour, colours.defaultBackColour);
 	mgr.AddField(debugField = new StaticTextField(row1 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Left, "debug"));
-//	mgr.AddField(new StaticTextField(row3 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Right, strings->current));
-//	mgr.AddField(new StaticTextField(row4 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Right, strings->active));
-//	mgr.AddField(new StaticTextField(row5 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Right, strings->standby));
 
 	// Add the grid
 	for (unsigned int i = 0; i < MaxHeaters; ++i)
@@ -756,31 +753,63 @@ void CreateCNCGrid(const ColourScheme& colours)
 		toolButtons[i] = b;
 		mgr.AddField(b);
 
-//		// Add the current temperature field
-//		DisplayField::SetDefaultColours(colours.infoTextColour, colours.defaultBackColour);
-//		FloatField *f = new FloatField(row3 + labelRowAdjust, column, tempButtonWidth, TextAlignment::Centre, 1);
-//		f->SetValue(0.0);
-//		f->Show(false);
-//		currentTemps[i] = f;
-//		mgr.AddField(f);
-//
-//		// Add the active temperature button
-//		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
-//		IntegerButton *ib = new IntegerButton(row4, column, tempButtonWidth);
-//		ib->SetEvent(evAdjustActiveTemp, i);
-//		ib->SetValue(0);
-//		ib->Show(false);
-//		activeTemps[i] = ib;
-//		mgr.AddField(ib);
-
-//		// Add the standby temperature button
-//		ib = new IntegerButton(row5, column, tempButtonWidth);
-//		ib->SetEvent(evAdjustStandbyTemp, i);
-//		ib->SetValue(0);
-//		ib->Show(false);
-//		standbyTemps[i] = ib;
-//		mgr.AddField(ib);
 	}
+}
+
+// Create the extra fields for the Control tab
+void CreateCNCControlTabFields(const ColourScheme& colours)
+{
+	mgr.SetRoot(commonRoot);
+
+	DisplayField::SetDefaultColours(colours.infoTextColour, colours.infoBackColour);
+	PixelNumber xyFieldWidth = bedColumn - fieldSpacing - margin - 16;
+	for (size_t i = 0; i < MaxAxes; ++i)
+	{
+		FloatField *f = new FloatField(row3 + i * rowHeight, margin, xyFieldWidth, TextAlignment::Right, 2, axisNames[i]);
+		axisPos[i] = f;
+		f->SetValue(0.0);
+		mgr.AddField(f);
+		f->Show(i < MIN_AXES);
+	}
+	zprobeBuf[0] = 0;
+	mgr.AddField(zProbe = new TextField(row6, margin, xyFieldWidth, TextAlignment::Right, "P", zprobeBuf.c_str()));
+
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
+	homeAllButton = AddIconButton(row7p7, 0, MaxAxes + 2, IconHomeAll, evSendCommand, "G28");
+	homeButtons[0] = AddIconButton(row7p7, 1, MaxAxes + 2, IconHomeX, evSendCommand, "G28 X0");
+	homeButtons[1] = AddIconButton(row7p7, 2, MaxAxes + 2, IconHomeY, evSendCommand, "G28 Y0");
+	homeButtons[2] = AddIconButton(row7p7, 3, MaxAxes + 2, IconHomeZ, evSendCommand, "G28 Z0");
+#if MaxAxes > 3
+	homeButtons[3] = AddIconButton(row7p7, 4, MaxAxes + 2, IconHomeU, evSendCommand, "G28 U0");
+	homeButtons[3]->Show(false);
+#endif
+#if MaxAxes > 4
+	homeButtons[4] = AddIconButton(row7p7, 5, MaxAxes + 2, IconHomeV, evSendCommand, "G28 V0");
+	homeButtons[4]->Show(false);
+#endif
+#if MaxAxes > 5
+	homeButtons[5] = AddIconButton(row7p7, 6, MaxAxes + 2, IconHomeW, evSendCommand, "G28 W0");
+	homeButtons[5]->Show(false);
+#endif
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
+	bedCompButton = AddIconButton(row7p7, MaxAxes + 1, MaxAxes + 2, IconBedComp, evSendCommand, "G32");
+
+	filesButton = AddIconButton(row8p7, 0, 4, IconFiles, evListFiles, nullptr);
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
+	moveButton = AddTextButton(row8p7, 1, 4, strings->move, evMovePopup, nullptr);
+	extrudeButton = AddTextButton(row8p7, 2, 4, strings->extrusion, evExtrudePopup, nullptr);
+	macroButton = AddTextButton(row8p7, 3, 4, strings->macro, evListMacros, nullptr);
+
+	// When there is room, we also display a few macro buttons on the right hand side
+	for (size_t i = 0; i < NumControlPageMacroButtons; ++i)
+	{
+		// The position and width of the buttons will get corrected when we know how many tools we have
+		TextButton *b = controlPageMacroButtons[i] = new TextButton(row2 + i * rowHeight, 999, 99, nullptr, evNull);
+		b->Show(false);			// hide them until we have loaded the macros
+		mgr.AddField(b);
+	}
+
+	controlRoot = mgr.GetRoot();
 }
 
 // Create the extra fields for the Control tab
@@ -1016,7 +1045,8 @@ void CreateMainPages(uint32_t language, const ColourScheme& colours)
 	commonRoot = mgr.GetRoot();		// save the root of fields that we display on more than one page
 
 	// Create the pages
-	CreateControlTabFields(colours);
+	//CreateControlTabFields(colours);
+	CreateCNCControlTabFields(colours);
 	CreatePrintingTabFields(colours);
 	CreateMessageTabFields(colours);
 	CreateSetupTabFields(language, colours);
@@ -1141,6 +1171,20 @@ namespace UI
 		{
 			axisPos[axis]->SetValue(fval);
 		}
+	}
+
+	void UpdateTool(size_t toolnr)
+	{
+		for (unsigned int i = 0; i < MaxHeaters; ++i)
+			{
+
+				// highlight the active tool
+				if(i == toolnr){
+					toolButtons[i]->SetColours(colours->buttonTextColour, colours->homedButtonBackColour);
+				} else {
+					toolButtons[i]->SetColours(colours->buttonTextColour, colours->notHomedButtonBackColour);
+				}
+			}
 	}
 
 	void UpdateCurrentTemperature(size_t heater, float fval)

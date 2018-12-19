@@ -214,6 +214,7 @@ enum ReceivedDataEvent
 	rcvSize,
 	rcvStatus,
 	rcvTimesLeft,
+	rcvTool,
 	rcvVolumes,
 	rcvNumTools,
 	rcvBabystep
@@ -701,6 +702,7 @@ const ReceiveDataTableEntry fieldTable[] =
 	{ rcvStandby,		"standby^" },
 	{ rcvStatus,		"status" },
 	{ rcvTimesLeft,		"timesLeft^" },
+	{ rcvTool,		    "tool" },
 	{ rcvVolumes,		"volumes" }
 };
 
@@ -1010,6 +1012,14 @@ void ProcessReceivedValue(const char id[], const char data[], const size_t indic
 
 	case rcvSeq:
 		GetUnsignedInteger(data, newMessageSeq);
+		break;
+
+	case rcvTool:
+	    {
+	    	uint32_t toolnr;
+	    	GetUnsignedInteger(data, toolnr);
+	    	UI::UpdateTool(toolnr);
+	    }
 		break;
 
 	case rcvResponse:

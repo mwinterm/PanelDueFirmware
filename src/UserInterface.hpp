@@ -28,6 +28,7 @@ namespace UI
 	extern void CreateFields(uint32_t language, const ColourScheme& colours);
 	extern void ShowAxis(size_t axis, bool b);
 	extern void UpdateAxisPosition(size_t axis, float fval);
+	extern void UpdateTool(size_t toolnr);
 	extern void UpdateCurrentTemperature(size_t heater, float fval);
 	extern void SetNumHeaters(size_t nHeaters);
 	extern void UpdateHeaterStatus(size_t heater, int ival);
