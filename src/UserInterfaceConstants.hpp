@@ -128,6 +128,7 @@ const PixelNumber row6 = row5 + rowHeight;
 const PixelNumber row6p3 = row6 + (rowHeight/3);
 const PixelNumber row7 = row6 + rowHeight;
 const PixelNumber row3p7 = row3 + ((2 * rowHeight)/3);
+const PixelNumber row6p7 = row6 + ((2 * rowHeight)/3);
 const PixelNumber row7p7 = row7 + ((2 * rowHeight)/3);
 const PixelNumber row8 = row7 + rowHeight;
 const PixelNumber row8p7 = row8 + ((2 * rowHeight)/3);

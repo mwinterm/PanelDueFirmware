@@ -124,8 +124,9 @@ uint32_t alertTicks = 0;
 uint32_t whenAlertReceived;
 bool displayingResponse = false;						// true if displaying a response
 
-static uint32_t spindleOnOff = 0;                       //for CNC
+static bool spindleOnOff = false;                       //for CNC
 static uint32_t spindleRPM = 1000;                       //for CNC defines the spindle RPM
+static bool bedCompensationOnOff = true;                       //switch bed compensaion on off
 
 
 class StandardPopupWindow : public PopupWindow
@@ -764,7 +765,7 @@ void CreateCNCGrid(const ColourScheme& colours)
 void CreateCNCControlTabFields(const ColourScheme& colours)
 {
 	mgr.SetRoot(commonRoot);
-	PixelNumber homeButtonWidth = 40;
+	PixelNumber homeButtonWidth = 50;
 
 	DisplayField::SetDefaultColours(colours.infoTextColour, colours.infoBackColour);
 	PixelNumber xyFieldWidth = bedColumn - fieldSpacing - margin - 16;
@@ -803,11 +804,21 @@ void CreateCNCControlTabFields(const ColourScheme& colours)
 	h = new TextButton(row6-2, 3*margin+xyFieldWidth+homeButtonWidth, 2*homeButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
 	mgr.AddField(h);
 
-	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
-	spindleButton = AddTextButton(row3p7, MaxAxes + 1, MaxAxes + 2, "Spindle", evSpindleOnOff, " ");
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
+	h = new TextButton(row3-2, 4*margin+xyFieldWidth+homeButtonWidth + 2*homeButtonWidth, 2*homeButtonWidth, "G54", evSendCommand, "G54");
+	mgr.AddField(h);
+	h = new TextButton(row3-2, 5*margin+xyFieldWidth+homeButtonWidth + 4*homeButtonWidth, 2*homeButtonWidth, "G55", evSendCommand, "G55");
+	mgr.AddField(h);
+	h = new TextButton(row3-2, 6*margin+xyFieldWidth+homeButtonWidth + 6*homeButtonWidth, 2*homeButtonWidth, "G56", evSendCommand, "G56");
+	mgr.AddField(h);
+	h = new TextButton(row3-2, 7*margin+xyFieldWidth+homeButtonWidth + 8*homeButtonWidth, 2*homeButtonWidth, "G57", evSendCommand, "G57");
+	mgr.AddField(h);
 
-	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
-	bedCompButton = AddIconButton(row7p7, MaxAxes + 1, MaxAxes + 2, IconBedComp, evSendCommand, "G32");
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonStopped);
+	spindleButton = AddTextButton(row6p7, MaxAxes + 1, MaxAxes + 2, "Spindle", evSpindleOnOff, " ");
+
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonRunning);
+	bedCompButton = AddIconButton(row7p7, MaxAxes + 1, MaxAxes + 2, IconBedComp, evBedCompensationOnOff, " ");
 
 	filesButton = AddIconButton(row8p7, 0, 4, IconFiles, evListFiles, nullptr);
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
@@ -2022,6 +2033,23 @@ namespace UI
 			    	}
 			    }
 			    break;
+
+			case evBedCompensationOnOff:
+			{
+				if (bedCompensationOnOff)
+				{
+					SerialIo::SendString("G29 S2\n");
+					bedCompensationOnOff = false;
+					bedCompButton->SetColours(colours->buttonTextColour, colours->buttonStopped);
+				}
+				else
+				{
+					SerialIo::SendString("G29 S1\n");
+					bedCompensationOnOff = true;
+					bedCompButton->SetColours(colours->buttonTextColour, colours->buttonRunning);
+				}
+			}
+			break;
 
 			case evFile:
 				{
