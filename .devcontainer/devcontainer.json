@@ -1,0 +1,25 @@
+{
+	"name": "PanelDue Firmware (ARM Cross-Compile)",
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+
+	"postCreateCommand": ".devcontainer/setup.sh",
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools",
+				"ms-vscode.cmake-tools",
+				"twxs.cmake"
+			],
+			"settings": {
+				"cmake.buildDirectory": "${workspaceFolder}/build",
+				"cmake.configureOnOpen": false
+			}
+		}
+	}
+}
