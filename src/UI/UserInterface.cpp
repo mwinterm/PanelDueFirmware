@@ -78,7 +78,7 @@ static TextButton *macroButtons[NumDisplayedMacros];
 static TextButton *controlPageMacroButtons[NumControlPageMacroButtons];
 static String<controlPageMacroTextLength> controlPageMacroText[NumControlPageMacroButtons];
 
-static PopupWindow *setTempPopup, *setRPMPopup, *movePopup, *extrudePopup, *fileListPopup, *macrosPopup, *fileDetailPopup, *baudPopup,
+static PopupWindow *setTempPopup, *setRPMPopup, *movePopup, *fileListPopup, *macrosPopup, *fileDetailPopup, *baudPopup,
 		*volumePopup, *infoTimeoutPopup, *screensaverTimeoutPopup, *babystepAmountPopup, *feedrateAmountPopup, *areYouSurePopup, *keyboardPopup, *languagePopup, *coloursPopup, *screensaverPopup, *firmwareUpdatePopup;
 static StaticTextField *areYouSureTextField, *areYouSureQueryField;
 static DisplayField *emptyRoot, *baseRoot, *commonRoot, *controlRoot, *printRoot, *messageRoot, *setupRoot;
@@ -112,7 +112,9 @@ static IntegerButton *activeTemps[MaxSlots], *standbyTemps[MaxSlots];
 static IntegerButton *spd, *extrusionFactors[MaxSlots], *fanSpeed, *baudRateButton, *volumeButton, *infoTimeoutButton, *screensaverTimeoutButton, *feedrateAmountButton;
 static TextButton *languageButton, *coloursButton, *dimmingTypeButton, *heaterCombiningButton, *logLevelButton;
 static TextButtonWithLabel *babystepAmountButton;
-static SingleButton *moveButton, *extrudeButton, *macroButton;
+static SingleButton *moveButton, *macroButton;
+static TextButton *wcsButtons[4];
+static TextButton *cncToolButtons[4];
 static PopupWindow *babystepPopup;
 static AlertPopup *alertPopup;
 static CharButtonRow *keyboardRows[4];
@@ -123,7 +125,6 @@ static ButtonBase * null currentTab = nullptr;
 
 static ButtonPress currentButton;
 static ButtonPress fieldBeingAdjusted;
-static ButtonPress currentExtrudeRatePress, currentExtrudeAmountPress;
 
 static String<machineNameLength> machineName;
 static String<printingFileLength> printingFile;
@@ -507,38 +508,6 @@ static void CreateMovePopup(const ColourScheme& colours)
 	}
 }
 
-// Create the extrusion controls popup
-static void CreateExtrudePopup(const ColourScheme& colours)
-{
-	static const char * _ecv_array extrudeAmountValues[] = { "100", "50", "20", "10", "5",  "1" };
-	static const char * _ecv_array extrudeSpeedValues[] = { "50", "20", "10", "5", "2", "1", "0.5" };
-	static const char * _ecv_array extrudeSpeedParams[] = { "3000", "1200", "600", "300", "120", "60", "30" };		// must be extrudeSpeedValues * 60
-
-	extrudePopup = new StandardPopupWindow(extrudePopupHeight, extrudePopupWidth, colours.popupBackColour, colours.popupBorderColour, colours.popupTextColour, colours.buttonImageBackColour, strings->extrusionAmount);
-	PixelNumber ypos = popupTopMargin + buttonHeight + extrudeButtonRowSpacing;
-	DisplayField::SetDefaultColours(colours.popupButtonTextColour, colours.popupButtonBackColour);
-	currentExtrudeAmountPress = CreateStringButtonRow(extrudePopup, ypos, popupSideMargin, extrudePopupWidth - 2 * popupSideMargin, fieldSpacing, 6, extrudeAmountValues, extrudeAmountValues, evExtrudeAmount, 3);
-	ypos += buttonHeight + extrudeButtonRowSpacing;
-	DisplayField::SetDefaultColours(colours.popupTextColour, colours.popupBackColour);
-	extrudePopup->AddField(new StaticTextField(ypos + labelRowAdjust, popupSideMargin, extrudePopupWidth - 2 * popupSideMargin, TextAlignment::Centre, strings->extrusionSpeed));
-	ypos += buttonHeight + extrudeButtonRowSpacing;
-	DisplayField::SetDefaultColours(colours.popupButtonTextColour, colours.popupButtonBackColour);
-	currentExtrudeRatePress = CreateStringButtonRow(
-			extrudePopup,
-			ypos,
-			popupSideMargin,
-			extrudePopupWidth - 2 * popupSideMargin,
-			fieldSpacing,
-			ARRAY_SIZE(extrudeSpeedValues),
-			extrudeSpeedValues,
-			extrudeSpeedParams,
-			evExtrudeRate,
-			ARRAY_SIZE(extrudeSpeedValues) / 2);
-
-	ypos += buttonHeight + extrudeButtonRowSpacing;
-	extrudePopup->AddField(new TextButton(ypos, popupSideMargin, extrudePopupWidth/3 - 2 * popupSideMargin, strings->extrude, evExtrude));
-	extrudePopup->AddField(new TextButton(ypos, (2 * extrudePopupWidth)/3 + popupSideMargin, extrudePopupWidth/3 - 2 * popupSideMargin, strings->retract, evRetract));
-}
 
 // Create a popup used to list files pr macros
 PopupWindow *CreateFileListPopup(FileListButtons& controlButtons, TextButton ** _ecv_array fileButtons, unsigned int numRows, unsigned int numCols, const ColourScheme& colours, bool filesNotMacros,
@@ -876,36 +845,46 @@ static void CreateBabystepPopup(const ColourScheme& colours)
 	babystepPopup->AddField(babystepPlusButton = new TextButtonWithLabel(ypos, CalcXPos(1, width, popupSideMargin), width, babystepAmounts[nvData.GetBabystepAmountIndex()], evBabyStepPlus, nullptr, MORE_ARROW " "));
 }
 
-// Create the CNC grid of tool icons (replaces temperature grid for CNC mode)
+// Create the CNC grid (replaces temperature grid for CNC mode)
 static void CreateCNCGrid(const ColourScheme& colours)
 {
 	// Add the emergency stop button
 	DisplayField::SetDefaultColours(colours.stopButtonTextColour, colours.stopButtonBackColour);
-	mgr.AddField(new TextButton(row2, margin, bedColumn - fieldSpacing - margin - 16, strings->stop, evEmergencyStop));
+	mgr.AddField(new TextButton(row2, margin, bedColumn - fieldSpacing - margin - 16, "E-STOP", evEmergencyStop));
+
+	// Add Stop, Pause, Resume buttons right-aligned on row2
+	{
+		const PixelNumber cncBtnWidth = bedColumn - fieldSpacing - margin - 16;	// same width as E-STOP
+		const PixelNumber cncBtnSpacing = 4;		// margin
+		const PixelNumber groupWidth = 3 * cncBtnWidth + 2 * cncBtnSpacing;
+		const PixelNumber startX = DISPLAY_X - 4 - groupWidth;
+
+		const Colour stopColour = UTFT::fromRGB(255, 165, 0);
+		DisplayField::SetDefaultColours(colours.buttonTextColour, stopColour, colours.buttonBorderColour, 0,
+										stopColour, 0, colours.pal);
+		mgr.AddField(new TextButton(row2, startX, cncBtnWidth, "Stop", evSendCommand, "M0"));
+
+		const Colour pauseColour = UTFT::fromRGB(255, 255, 0);
+		DisplayField::SetDefaultColours(colours.buttonTextColour, pauseColour, colours.buttonBorderColour, 0,
+										pauseColour, 0, colours.pal);
+		mgr.AddField(new TextButton(row2, startX + cncBtnWidth + cncBtnSpacing, cncBtnWidth, strings->pause, evSendCommand, "M25"));
+
+		const Colour resumeColour = UTFT::fromRGB(0, 192, 0);
+		DisplayField::SetDefaultColours(colours.buttonTextColour, resumeColour, colours.buttonBorderColour, 0,
+										resumeColour, 0, colours.pal);
+		mgr.AddField(new TextButton(row2, startX + 2 * (cncBtnWidth + cncBtnSpacing), cncBtnWidth, strings->resume, evSendCommand, "M24"));
+	}
 
 	// Add the labels and the debug field
 	DisplayField::SetDefaultColours(colours.labelTextColour, colours.defaultBackColour);
 	mgr.AddField(debugField = new StaticTextField(row1 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Left, "debug"));
-
-	// Add the grid
-	for (unsigned int i = 0; i < MaxSlots; ++i)
-	{
-		const PixelNumber column = ((tempButtonWidth + fieldSpacing) * i) + bedColumn;
-
-		// Add the icon button
-		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
-		IconButtonWithText * const b = new IconButtonWithText(row2, column, tempButtonWidth, i == 0 ? IconBed : IconNozzle, evSelectTool, i, i);
-		b->Show(false);
-		toolButtons[i] = b;
-		mgr.AddField(b);
-	}
 }
 
 // Create the extra fields for the CNC Control tab (replaces standard control tab)
 static void CreateCNCControlTabFields(const ColourScheme& colours)
 {
 	mgr.SetRoot(commonRoot);
-	const PixelNumber homeButtonWidth = 50;
+	const PixelNumber homeButtonWidth = 62;
 
 	DisplayField::SetDefaultColours(colours.infoTextColour, colours.infoBackColour);
 	const PixelNumber xyFieldWidth = bedColumn - fieldSpacing - margin - 16;
@@ -935,26 +914,46 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 	mgr.AddField(homeAllButton);
 
 	// WCS Set buttons
+	const PixelNumber setButtonWidth = 100;
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
-	TextButton *h = new TextButton(row3 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, 2 * homeButtonWidth, "SetX", evSendCommand, "G10 L20 X0");
+	TextButton *h = new TextButton(row3 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetX", evSendCommand, "G10 L20 X0");
 	mgr.AddField(h);
-	h = new TextButton(row4 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, 2 * homeButtonWidth, "SetY", evSendCommand, "G10 L20 Y0");
+	h = new TextButton(row4 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetY", evSendCommand, "G10 L20 Y0");
 	mgr.AddField(h);
-	h = new TextButton(row5 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, 2 * homeButtonWidth, "SetZ", evSendCommand, "G10 L20 Z0");
+	h = new TextButton(row5 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetZ", evSendCommand, "G10 L20 Z0");
 	mgr.AddField(h);
-	h = new TextButton(row6 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, 2 * homeButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
+	h = new TextButton(row6 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
 	mgr.AddField(h);
 
-	// WCS selection buttons (G54-G57)
-	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
-	h = new TextButton(row3 - 2, 4 * margin + xyFieldWidth + homeButtonWidth + 2 * homeButtonWidth, 2 * homeButtonWidth, "G54", evSendCommand, "G54");
-	mgr.AddField(h);
-	h = new TextButton(row3 - 2, 5 * margin + xyFieldWidth + homeButtonWidth + 4 * homeButtonWidth, 2 * homeButtonWidth, "G55", evSendCommand, "G55");
-	mgr.AddField(h);
-	h = new TextButton(row3 - 2, 6 * margin + xyFieldWidth + homeButtonWidth + 6 * homeButtonWidth, 2 * homeButtonWidth, "G56", evSendCommand, "G56");
-	mgr.AddField(h);
-	h = new TextButton(row3 - 2, 7 * margin + xyFieldWidth + homeButtonWidth + 8 * homeButtonWidth, 2 * homeButtonWidth, "G57", evSendCommand, "G57");
-	mgr.AddField(h);
+	// WCS selection buttons (G54-G57), right-aligned
+	{
+		static const char * const wcsLabels[] = { "G54", "G55", "G56", "G57" };
+		const PixelNumber wcsButtonWidth = 100;
+		const PixelNumber wcsButtonSpacing = margin;
+		const PixelNumber wcsGroupWidth = 4 * wcsButtonWidth + 3 * wcsButtonSpacing;
+		const PixelNumber wcsStartX = DISPLAY_X - margin - wcsGroupWidth;
+		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
+		for (size_t i = 0; i < 4; ++i)
+		{
+			wcsButtons[i] = new TextButton(row3 - 2, wcsStartX + i * (wcsButtonWidth + wcsButtonSpacing), wcsButtonWidth, wcsLabels[i], evSendCommand, wcsLabels[i]);
+			mgr.AddField(wcsButtons[i]);
+		}
+	}
+
+	// CNC tool selection buttons (T0-T3), right-aligned
+	{
+		static const char * const toolLabels[] = { "T0", "T1", "T2", "T3" };
+		const PixelNumber toolButtonWidth = 100;
+		const PixelNumber toolButtonSpacing = margin;
+		const PixelNumber toolGroupWidth = 4 * toolButtonWidth + 3 * toolButtonSpacing;
+		const PixelNumber toolStartX = DISPLAY_X - margin - toolGroupWidth;
+		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
+		for (size_t i = 0; i < 4; ++i)
+		{
+			cncToolButtons[i] = new TextButton(row4 - 2, toolStartX + i * (toolButtonWidth + toolButtonSpacing), toolButtonWidth, toolLabels[i], evSelectTool, (int)i);
+			mgr.AddField(cncToolButtons[i]);
+		}
+	}
 
 	// Spindle on/off button
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonStopped);
@@ -965,11 +964,10 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 	bedCompButton = AddIconButton(row7p7, MaxDisplayableAxes + 1, MaxDisplayableAxes + 2, IconBedComp, evBedCompensationOnOff, " ");
 
 	// Bottom row buttons
-	filesButton = AddIconButton(row8p7, 0, 4, IconFiles, evListFiles, nullptr);
+	filesButton = AddIconButton(row8p7, 0, 3, IconFiles, evListFiles, nullptr);
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
-	moveButton = AddTextButton(row8p7, 1, 4, strings->move, evMovePopup, nullptr);
-	extrudeButton = AddTextButton(row8p7, 2, 4, strings->extrusion, evExtrudePopup, nullptr);
-	macroButton = AddTextButton(row8p7, 3, 4, strings->macro, evListMacros, nullptr);
+	moveButton = AddTextButton(row8p7, 1, 3, strings->move, evMovePopup, nullptr);
+	macroButton = AddTextButton(row8p7, 2, 3, strings->macro, evListMacros, nullptr);
 
 	// Macro buttons on the right
 	for (size_t i = 0; i < NumControlPageMacroButtons; ++i)
@@ -1073,11 +1071,10 @@ static void CreateControlTabFields(const ColourScheme& colours)
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
 	bedCompButton = AddIconButton(row7p7, MaxDisplayableAxes + 1, MaxDisplayableAxes + 2, IconBedComp, evSendCommand, "G32");
 
-	filesButton = AddIconButton(row8p7, 0, 4, IconFiles, evListFiles, nullptr);
+	filesButton = AddIconButton(row8p7, 0, 3, IconFiles, evListFiles, nullptr);
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
-	moveButton = AddTextButton(row8p7, 1, 4, strings->move, evMovePopup, nullptr);
-	extrudeButton = AddTextButton(row8p7, 2, 4, strings->extrusion, evExtrudePopup, nullptr);
-	macroButton = AddTextButton(row8p7, 3, 4, strings->macro, evListMacros, nullptr);
+	moveButton = AddTextButton(row8p7, 1, 3, strings->move, evMovePopup, nullptr);
+	macroButton = AddTextButton(row8p7, 2, 3, strings->macro, evListMacros, nullptr);
 
 	// When there is room, we also display a few macro buttons on the right hand side
 	for (size_t i = 0; i < NumControlPageMacroButtons; ++i)
@@ -1249,8 +1246,8 @@ static void CreateSetupTabFields(uint32_t language, const ColourScheme& colours)
 // Create the fields that are displayed on all pages
 static void CreateCommonFields(const ColourScheme& colours)
 {
-	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour, colours.buttonBorderColour, colours.buttonGradColour,
-									colours.buttonPressedBackColour, colours.buttonPressedGradColour, colours.pal);
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour, colours.buttonBorderColour, 0,
+									colours.buttonPressedBackColour, 0, colours.pal);
 	tabControl = AddTextButton(rowTabs, 0, 4, strings->control, evTabControl, nullptr);
 	tabStatus = AddTextButton(rowTabs, 1, 4, strings->status, evTabStatus, nullptr);
 	tabMsg = AddTextButton(rowTabs, 2, 4, strings->console, evTabMsg, nullptr);
@@ -1346,7 +1343,6 @@ namespace UI
 		CreateIntegerAdjustPopup(colours);
 		CreateIntegerRPMAdjustPopup(colours);
 		CreateMovePopup(colours);
-		CreateExtrudePopup(colours);
 		fileListPopup = CreateFileListPopup(filesListButtons, filenameButtons, NumFileRows, NumFileColumns, colours, true);
 		macrosPopup = CreateFileListPopup(macrosListButtons, macroButtons, NumMacroRows, NumMacroColumns, colours, false);
 		CreateFileActionPopup(colours);
@@ -1555,19 +1551,12 @@ namespace UI
 		}
 		currentTool = ival;
 
-		// Highlight the active tool button in the CNC grid
-		for (unsigned int i = 0; i < MaxSlots; ++i)
+		// Highlight the active CNC tool button
+		for (size_t i = 0; i < 4; ++i)
 		{
-			if (toolButtons[i] != nullptr)
+			if (cncToolButtons[i] != nullptr)
 			{
-				if ((int32_t)i == currentTool)
-				{
-					toolButtons[i]->SetColours(colours->buttonTextColour, colours->homedButtonBackColour);
-				}
-				else
-				{
-					toolButtons[i]->SetColours(colours->buttonTextColour, colours->notHomedButtonBackColour);
-				}
+				cncToolButtons[i]->SetColours(colours->buttonTextColour, ((int32_t)i == currentTool) ? colours->homedButtonBackColour : colours->notHomedButtonBackColour);
 			}
 		}
 	}
@@ -2437,9 +2426,6 @@ namespace UI
 		case evTabMsg:
 		case evTabSetup:
 
-		case evExtrudeAmount:
-		case evExtrudeRate:
-
 		case evAdjustBaudRate:
 		case evAdjustVolume:
 		case evAdjustInfoTimeout:
@@ -2723,38 +2709,6 @@ namespace UI
 					TextButtonForAxis *textButton = static_cast<TextButtonForAxis*>(bp.GetButton());
 					const char letter = textButton->GetAxisLetter();
 					SerialIo::Sendf("G91 G1 %s%c%s F%d G90\n", islower(letter) ? "'" : "", letter, bp.GetSParam(), nvData.GetFeedrate());
-				}
-				break;
-
-			case evExtrudePopup:
-				if (isLandscape)
-				{
-					mgr.SetPopup(extrudePopup, AutoPlace, AutoPlace);
-				}
-				break;
-
-			case evExtrudeAmount:
-				mgr.Press(currentExtrudeAmountPress, false);
-				mgr.Press(bp, true);
-				currentExtrudeAmountPress = bp;
-				currentButton.Clear();						// stop it being released by the timer
-				break;
-
-			case evExtrudeRate:
-				mgr.Press(currentExtrudeRatePress, false);
-				mgr.Press(bp, true);
-				currentExtrudeRatePress = bp;
-				currentButton.Clear();						// stop it being released by the timer
-				break;
-
-			case evExtrude:
-			case evRetract:
-				if (currentExtrudeAmountPress.IsValid() && currentExtrudeRatePress.IsValid())
-				{
-					SerialIo::Sendf("M120 M83 G1 E%s%s F%s M121\n",
-							(ev == evRetract ? "-" : ""),
-							currentExtrudeAmountPress.GetSParam(),
-							currentExtrudeRatePress.GetSParam());
 				}
 				break;
 
@@ -4026,6 +3980,13 @@ namespace UI
 			return;
 		}
 		currentWorkplaceNumber = workplaceNumber;
+		for (size_t i = 0; i < 4; ++i)
+		{
+			if (wcsButtons[i] != nullptr)
+			{
+				wcsButtons[i]->SetColours(colours->buttonTextColour, (i == workplaceNumber) ? colours->homedButtonBackColour : colours->notHomedButtonBackColour);
+			}
+		}
 	}
 
 	void SetBedOrChamberHeater(const uint8_t heaterIndex, const int8_t heaterNumber, bool bed)
