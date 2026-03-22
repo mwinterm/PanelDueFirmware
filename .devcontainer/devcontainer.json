@@ -1,8 +1,7 @@
 {
 	"name": "PanelDue Firmware (ARM Cross-Compile)",
 	"build": {
-		"dockerfile": "Dockerfile",
-		"options": ["--platform=linux/amd64"]
+		"dockerfile": "Dockerfile"
 	},
 
 	"postCreateCommand": "git submodule update --init --recursive",
