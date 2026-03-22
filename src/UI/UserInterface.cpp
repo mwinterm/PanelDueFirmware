@@ -890,39 +890,39 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 	const PixelNumber xyFieldWidth = bedColumn - fieldSpacing - margin - 16;
 	for (size_t i = 0; i < MaxDisplayableAxes; ++i)
 	{
-		FloatField * const f = new FloatField(row3 + i * rowHeight, margin, xyFieldWidth, TextAlignment::Right, 2, axisNames[i]);
+		FloatField * const f = new FloatField(row4 + i * rowHeight, margin, xyFieldWidth, TextAlignment::Right, 2, axisNames[i]);
 		controlTabAxisPos[i] = f;
 		f->SetValue(0.0);
 		mgr.AddField(f);
 		f->Show(i < MaxDisplayableAxes);	// CNC: always show all 3 axes
 	}
 	zprobeBuf[0] = 0;
-	mgr.AddField(zProbe = new TextField(row6, margin, xyFieldWidth, TextAlignment::Right, "P", zprobeBuf.c_str()));
+	mgr.AddField(zProbe = new TextField(row7, margin, xyFieldWidth, TextAlignment::Right, "P", zprobeBuf.c_str()));
 
 	// Home buttons (vertically arranged)
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
-	IconButtonWithText *g = new IconButtonWithText(row3 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "X", "G28 X0");
+	IconButtonWithText *g = new IconButtonWithText(row4 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "X", "G28 X0");
 	homeButtons[0] = g;
 	mgr.AddField(g);
-	g = new IconButtonWithText(row4 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "Y", "G28 Y0");
+	g = new IconButtonWithText(row5 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "Y", "G28 Y0");
 	homeButtons[1] = g;
 	mgr.AddField(g);
-	g = new IconButtonWithText(row5 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "Z", "G28 Z0");
+	g = new IconButtonWithText(row6 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "Z", "G28 Z0");
 	homeButtons[2] = g;
 	mgr.AddField(g);
-	homeAllButton = new IconButton(row6 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "G28");
+	homeAllButton = new IconButton(row7 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "G28");
 	mgr.AddField(homeAllButton);
 
 	// WCS Set buttons
 	const PixelNumber setButtonWidth = 100;
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
-	TextButton *h = new TextButton(row3 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetX", evSendCommand, "G10 L20 X0");
+	TextButton *h = new TextButton(row4 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetX", evSendCommand, "G10 L20 X0");
 	mgr.AddField(h);
-	h = new TextButton(row4 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetY", evSendCommand, "G10 L20 Y0");
+	h = new TextButton(row5 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetY", evSendCommand, "G10 L20 Y0");
 	mgr.AddField(h);
-	h = new TextButton(row5 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetZ", evSendCommand, "G10 L20 Z0");
+	h = new TextButton(row6 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetZ", evSendCommand, "G10 L20 Z0");
 	mgr.AddField(h);
-	h = new TextButton(row6 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
+	h = new TextButton(row7 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
 	mgr.AddField(h);
 
 	// WCS selection buttons (G54-G57), right-aligned
@@ -935,7 +935,7 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
 		for (size_t i = 0; i < 4; ++i)
 		{
-			wcsButtons[i] = new TextButton(row3 - 2, wcsStartX + i * (wcsButtonWidth + wcsButtonSpacing), wcsButtonWidth, wcsLabels[i], evSendCommand, wcsLabels[i]);
+			wcsButtons[i] = new TextButton(row4 - 2, wcsStartX + i * (wcsButtonWidth + wcsButtonSpacing), wcsButtonWidth, wcsLabels[i], evSendCommand, wcsLabels[i]);
 			mgr.AddField(wcsButtons[i]);
 		}
 	}
@@ -950,7 +950,7 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
 		for (size_t i = 0; i < 4; ++i)
 		{
-			cncToolButtons[i] = new TextButton(row4 - 2, toolStartX + i * (toolButtonWidth + toolButtonSpacing), toolButtonWidth, toolLabels[i], evSelectTool, (int)i);
+			cncToolButtons[i] = new TextButton(row5 - 2, toolStartX + i * (toolButtonWidth + toolButtonSpacing), toolButtonWidth, toolLabels[i], evSelectTool, (int)i);
 			mgr.AddField(cncToolButtons[i]);
 		}
 	}
