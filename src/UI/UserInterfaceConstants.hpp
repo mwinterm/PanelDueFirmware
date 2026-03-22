@@ -67,7 +67,7 @@ extern uint8_t glcd19x21[];				// declare which fonts we will be using
 
 #elif DISPLAY_X == 800
 const unsigned int MaxSlots = 7;
-#define MaxDisplayableAxes (6)
+#define MaxDisplayableAxes (3)
 
 const PixelNumber margin = 4;
 const PixelNumber textButtonMargin = 1;
@@ -126,6 +126,8 @@ const PixelNumber row4 = row3 + rowHeight;
 const PixelNumber row5 = row4 + rowHeight;
 const PixelNumber row6 = row5 + rowHeight;
 const PixelNumber row6p3 = row6 + (rowHeight/3);
+const PixelNumber row3p7 = row3 + ((2 * rowHeight)/3);
+const PixelNumber row6p7 = row6 + ((2 * rowHeight)/3);
 const PixelNumber row7 = row6 + rowHeight;
 const PixelNumber row7p7 = row7 + ((2 * rowHeight)/3);
 const PixelNumber row8 = row7 + rowHeight;
@@ -159,7 +161,7 @@ const PixelNumber areYouSurePopupWidth = DisplayX - 80,
 				  areYouSurePopupHeight = (3 * rowHeight) + (2 * popupTopMargin);
 
 const PixelNumber movePopupWidth = fullPopupWidth;
-const PixelNumber movePopupHeight = ((MaxDisplayableAxes + 1) * buttonHeight) + (MaxDisplayableAxes * moveButtonRowSpacing) + (2 * popupTopMargin);
+const PixelNumber movePopupHeight = ((MaxDisplayableAxes + 2) * buttonHeight) + ((MaxDisplayableAxes + 1) * moveButtonRowSpacing) + (2 * popupTopMargin);
 
 const PixelNumber extrudePopupWidth = fullPopupWidth;
 const PixelNumber extrudePopupHeight = (5 * buttonHeight) + (4 * extrudeButtonRowSpacing) + (2 * popupTopMargin);

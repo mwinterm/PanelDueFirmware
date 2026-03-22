@@ -25,6 +25,9 @@ enum Event : uint8_t
 	evAdjustBedActiveTemp, evAdjustBedStandbyTemp,
 	evAdjustChamberActiveTemp, evAdjustChamberStandbyTemp,
 
+	// Tool control (CNC)
+	evSelectTool, evBedCompensationOnOff, evSpindleOnOff,
+
 	// Spindle control
 	evAdjustActiveRPM,
 

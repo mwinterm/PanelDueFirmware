@@ -8,7 +8,7 @@
 #ifndef SRC_VERSION_HPP_
 #define SRC_VERSION_HPP_
 
-#define VERSION_MAIN		"3.5.2"
+#define VERSION_MAIN		"3.5.2modMW"
 
 #ifdef SUPPORT_ENCODER
 # define VERSION_ENCODER	"+enc"
