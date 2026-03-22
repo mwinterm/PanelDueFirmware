@@ -955,9 +955,17 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 		}
 	}
 
+	// Z-Probe button (left of Spindle)
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
+	AddTextButton(row6p7, MaxDisplayableAxes, MaxDisplayableAxes + 2, "Z-Probe", evSendCommand, "G30");
+
 	// Spindle on/off button
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonStopped);
 	spindleButton = AddTextButton(row6p7, MaxDisplayableAxes + 1, MaxDisplayableAxes + 2, "Spindle", evSpindleOnOff, " ");
+
+	// ToolSet button (below Z-Probe)
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
+	AddTextButton(row7p7, MaxDisplayableAxes, MaxDisplayableAxes + 2, "ToolSet", evSendCommand, "M98 P\"toolset.g\"");
 
 	// Bed compensation on/off button
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonRunning);
