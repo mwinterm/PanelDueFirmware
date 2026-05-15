@@ -879,32 +879,34 @@ static void CreateCNCGrid(const ColourScheme& colours)
 	DisplayField::SetDefaultColours(colours.labelTextColour, colours.defaultBackColour);
 	mgr.AddField(debugField = new StaticTextField(row1 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Left, "debug"));
 
-	// Create hidden tool/heater UI elements so that firmware status updates don't crash on null pointers
+	// Create hidden tool/heater UI elements so that firmware status updates don't crash on null pointers.
+	// Position them off-screen since status updates will call mgr.Show(true) on them.
+	const PixelNumber offScreenY = 2000;
 	for (unsigned int i = 0; i < MaxSlots; ++i)
 	{
-		const PixelNumber column = ((tempButtonWidth + fieldSpacing) * i) + bedColumn;
+		const PixelNumber column = offScreenY;
 
 		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
-		IconButtonWithText * const b = new IconButtonWithText(row2, column, tempButtonWidth, i == 0 ? IconBed : IconNozzle, evSelectHead, i, i);
+		IconButtonWithText * const b = new IconButtonWithText(offScreenY, column, tempButtonWidth, i == 0 ? IconBed : IconNozzle, evSelectHead, i, i);
 		b->Show(false);
 		toolButtons[i] = b;
 		mgr.AddField(b);
 
 		DisplayField::SetDefaultColours(colours.infoTextColour, colours.defaultBackColour);
-		FloatField * const f = new FloatField(row3 + labelRowAdjust, column, tempButtonWidth, TextAlignment::Centre, 1);
+		FloatField * const f = new FloatField(offScreenY, column, tempButtonWidth, TextAlignment::Centre, 1);
 		f->Show(false);
 		currentTemps[i] = f;
 		mgr.AddField(f);
 
 		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
-		IntegerButton *ib = new IntegerButton(row4, column, tempButtonWidth);
+		IntegerButton *ib = new IntegerButton(offScreenY, column, tempButtonWidth);
 		ib->SetEvent(evAdjustToolActiveTemp, i);
 		ib->SetValue(0);
 		ib->Show(false);
 		activeTemps[i] = ib;
 		mgr.AddField(ib);
 
-		ib = new IntegerButton(row5, column, tempButtonWidth);
+		ib = new IntegerButton(offScreenY, column, tempButtonWidth);
 		ib->SetEvent(evAdjustToolStandbyTemp, i);
 		ib->SetValue(0);
 		ib->Show(false);
