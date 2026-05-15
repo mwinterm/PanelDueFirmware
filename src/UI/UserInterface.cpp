@@ -878,6 +878,39 @@ static void CreateCNCGrid(const ColourScheme& colours)
 	// Add the labels and the debug field
 	DisplayField::SetDefaultColours(colours.labelTextColour, colours.defaultBackColour);
 	mgr.AddField(debugField = new StaticTextField(row1 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Left, "debug"));
+
+	// Create hidden tool/heater UI elements so that firmware status updates don't crash on null pointers
+	for (unsigned int i = 0; i < MaxSlots; ++i)
+	{
+		const PixelNumber column = ((tempButtonWidth + fieldSpacing) * i) + bedColumn;
+
+		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonImageBackColour);
+		IconButtonWithText * const b = new IconButtonWithText(row2, column, tempButtonWidth, i == 0 ? IconBed : IconNozzle, evSelectHead, i, i);
+		b->Show(false);
+		toolButtons[i] = b;
+		mgr.AddField(b);
+
+		DisplayField::SetDefaultColours(colours.infoTextColour, colours.defaultBackColour);
+		FloatField * const f = new FloatField(row3 + labelRowAdjust, column, tempButtonWidth, TextAlignment::Centre, 1);
+		f->Show(false);
+		currentTemps[i] = f;
+		mgr.AddField(f);
+
+		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
+		IntegerButton *ib = new IntegerButton(row4, column, tempButtonWidth);
+		ib->SetEvent(evAdjustToolActiveTemp, i);
+		ib->SetValue(0);
+		ib->Show(false);
+		activeTemps[i] = ib;
+		mgr.AddField(ib);
+
+		ib = new IntegerButton(row5, column, tempButtonWidth);
+		ib->SetEvent(evAdjustToolStandbyTemp, i);
+		ib->SetValue(0);
+		ib->Show(false);
+		standbyTemps[i] = ib;
+		mgr.AddField(ib);
+	}
 }
 
 // Create the extra fields for the CNC Control tab (replaces standard control tab)
@@ -901,13 +934,13 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 
 	// Home buttons (vertically arranged)
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
-	IconButtonWithText *g = new IconButtonWithText(row4 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "X", "G28 X0");
+	IconButtonWithText *g = new IconButtonWithText(row4 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evHomeAxis, "X", axisNames[0]);
 	homeButtons[0] = g;
 	mgr.AddField(g);
-	g = new IconButtonWithText(row5 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "Y", "G28 Y0");
+	g = new IconButtonWithText(row5 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evHomeAxis, "Y", axisNames[1]);
 	homeButtons[1] = g;
 	mgr.AddField(g);
-	g = new IconButtonWithText(row6 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "Z", "G28 Z0");
+	g = new IconButtonWithText(row6 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evHomeAxis, "Z", axisNames[2]);
 	homeButtons[2] = g;
 	mgr.AddField(g);
 	homeAllButton = new IconButton(row7 - 2, 2 * margin + xyFieldWidth, homeButtonWidth, IconHomeAll, evSendCommand, "G28");
