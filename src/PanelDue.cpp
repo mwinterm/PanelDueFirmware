@@ -269,7 +269,9 @@ enum ReceivedDataEvent
 
 	// Keys for heat response
 	rcvHeatBedHeaters,
+	rcvHeatBedHeaterMapping,
 	rcvHeatChamberHeaters,
+	rcvHeatChamberHeaterMapping,
 	rcvHeatHeatersActive,
 	rcvHeatHeatersCurrent,
 	rcvHeatHeatersStandby,
@@ -385,8 +387,10 @@ static FieldTableEntry fieldTable[] =
 	{ rcvFansRequestedValue,			"fans^:requestedValue" },
 
 	// M409 K"heat" response
-	{ rcvHeatBedHeaters,				"heat:bedHeaters^" },
-	{ rcvHeatChamberHeaters,			"heat:chamberHeaters^" },
+	{ rcvHeatBedHeaters,				"heat:bedHeaters^" },				// RRF 3.6 and earlier
+	{ rcvHeatBedHeaterMapping,			"heat:bedHeaterMapping^^" },		// RRF 3.7 and later
+	{ rcvHeatChamberHeaters,			"heat:chamberHeaters^" },			// RRF 3.6 and earlier
+	{ rcvHeatChamberHeaterMapping,		"heat:chamberHeaterMapping^^" },	// RRF 3.7 and later
 	{ rcvHeatHeatersActive,				"heat:heaters^:active" },
 	{ rcvHeatHeatersCurrent,			"heat:heaters^:current" },
 	{ rcvHeatHeatersStandby,			"heat:heaters^:standby" },
@@ -398,7 +402,7 @@ static FieldTableEntry fieldTable[] =
 	{ rcvJobFileSimulatedTime, 			"job:file:simulatedTime" },
 	{ rcvJobFilePosition,				"job:filePosition" },
 	{ rcvJobLastFileName,				"job:lastFileName" },
-	{ rcvJobDuration,				"job:duration" },
+	{ rcvJobDuration,					"job:duration" },
 	{ rcvJobTimesLeftFilament,			"job:timesLeft:filament" },
 	{ rcvJobTimesLeftFile,				"job:timesLeft:file" },
 	{ rcvJobTimesLeftSlicer,			"job:timesLeft:slicer" },
@@ -409,7 +413,7 @@ static FieldTableEntry fieldTable[] =
 	{ rcvMoveAxesHomed,					"move:axes^:homed" },
 	{ rcvMoveAxesLetter,	 			"move:axes^:letter" },
 	{ rcvMoveAxesMachinePosition,		"move:axes^:machinePosition" },
-	{ rcvMoveAxesMax, 				"move:axes^:max" },
+	{ rcvMoveAxesMax, 					"move:axes^:max" },
 	{ rcvMoveAxesUserPosition,			"move:axes^:userPosition" },
 	{ rcvMoveAxesVisible, 				"move:axes^:visible" },
 	{ rcvMoveAxesWorkplaceOffsets, 		"move:axes^:workplaceOffsets^" },
@@ -457,13 +461,13 @@ static FieldTableEntry fieldTable[] =
 	{ rcvStateMessageBoxMessage,		"state:messageBox:message" },
 	{ rcvStateMessageBoxMode,			"state:messageBox:mode" },
 	{ rcvStateMessageBoxSeq,			"state:messageBox:seq" },
-	{ rcvStateMessageBoxTimeout,			"state:messageBox:timeout" },
+	{ rcvStateMessageBoxTimeout,		"state:messageBox:timeout" },
 	{ rcvStateMessageBoxTitle,			"state:messageBox:title" },
-	{ rcvStateMessageBoxLimitMin,			"state:messageBox:min" },
-	{ rcvStateMessageBoxLimitMax,			"state:messageBox:max" },
-	{ rcvStateMessageBoxChoices,			"state:messageBox:choices^" },
-	{ rcvStateMessageBoxCancelButton,		"state:messageBox:cancelButton" },
-	{ rcvStateMessageBoxValueDefault,		"state:messageBox:default" },
+	{ rcvStateMessageBoxLimitMin,		"state:messageBox:min" },
+	{ rcvStateMessageBoxLimitMax,		"state:messageBox:max" },
+	{ rcvStateMessageBoxChoices,		"state:messageBox:choices^" },
+	{ rcvStateMessageBoxCancelButton,	"state:messageBox:cancelButton" },
+	{ rcvStateMessageBoxValueDefault,	"state:messageBox:default" },
 
 	{ rcvStateStatus,					"state:status" },
 	{ rcvStateUptime,					"state:upTime" },
@@ -1259,7 +1263,22 @@ static void ProcessReceivedValue(StringRef id, const char data[], const size_t i
 			int32_t heaterNumber;
 			if (GetInteger(data, heaterNumber) && heaterNumber > -1)
 			{
-				UI::SetBedOrChamberHeater(indices[0], heaterNumber);
+				UI::SetBedOrChamberHeater(indices[0], heaterNumber, true);
+				for (size_t i = lastBed + 1; i < indices[0]; ++i)
+				{
+					OM::RemoveBed(i, false);
+				}
+				lastBed = indices[0];
+			}
+		}
+		break;
+
+	case rcvHeatBedHeaterMapping:
+		{
+			int32_t heaterNumber;
+			if (indices[1] == 0 && GetInteger(data, heaterNumber) && heaterNumber > -1)
+			{
+				UI::SetBedOrChamberHeater(indices[0], heaterNumber, true);
 				for (size_t i = lastBed + 1; i < indices[0]; ++i)
 				{
 					OM::RemoveBed(i, false);
@@ -1273,6 +1292,21 @@ static void ProcessReceivedValue(StringRef id, const char data[], const size_t i
 		{
 			int32_t heaterNumber;
 			if (GetInteger(data, heaterNumber) && heaterNumber > -1)
+			{
+				UI::SetBedOrChamberHeater(indices[0], heaterNumber, false);
+				for (size_t i = lastChamber + 1; i < indices[0]; ++i)
+				{
+					OM::RemoveChamber(i, false);
+				}
+				lastChamber = indices[0];
+			}
+		}
+		break;
+
+	case rcvHeatChamberHeaterMapping:
+		{
+			int32_t heaterNumber;
+			if (indices[1] == 0 && GetInteger(data, heaterNumber) && heaterNumber > -1)
 			{
 				UI::SetBedOrChamberHeater(indices[0], heaterNumber, false);
 				for (size_t i = lastChamber + 1; i < indices[0]; ++i)

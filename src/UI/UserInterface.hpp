@@ -118,7 +118,7 @@ namespace UI
 	extern bool RemoveToolHeaters(const size_t toolIndex, const uint8_t firstIndexToDelete);
 	extern void SetToolOffset(size_t toolIndex, size_t axisIndex, float offset);
 
-	extern void SetBedOrChamberHeater(const uint8_t heaterIndex, const int8_t heaterNumber, bool bed = true);
+	extern void SetBedOrChamberHeater(const uint8_t heaterIndex, const int8_t heaterNumber, bool bed);
 
 	extern void SetSpindleActive(size_t spindleIndex, int32_t activeRpm);
 	extern void SetSpindleCurrent(size_t spindleIndex, int32_t currentRpm);
