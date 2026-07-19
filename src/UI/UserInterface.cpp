@@ -880,7 +880,7 @@ static void CreateCNCGrid(const ColourScheme& colours)
 	mgr.AddField(debugField = new StaticTextField(row1 + labelRowAdjust, margin, bedColumn - fieldSpacing - margin, TextAlignment::Left, "debug"));
 
 	// Create hidden tool/heater UI elements so that firmware status updates don't crash on null pointers.
-	// Position them off-screen since status updates will call mgr.Show(true) on them.
+	// Keep them in the display manager so mgr.Show()/redraw logic still works in CNC mode.
 	const PixelNumber offScreenY = 2000;
 	for (unsigned int i = 0; i < MaxSlots; ++i)
 	{
@@ -3552,11 +3552,12 @@ namespace UI
 
 			for (TextButton *& b : controlPageMacroButtons)
 			{
+				const bool hasMacroAssigned = (b->GetEvent() != evNull);
 				if (showControlPageMacroButtons)
 				{
 					b->SetPositionAndWidth(controlPageMacroButtonsColumn, controlPageMacroButtonsWidth);
 				}
-				mgr.Show(b, showControlPageMacroButtons);
+				mgr.Show(b, showControlPageMacroButtons && hasMacroAssigned);
 			}
 
 			if (currentTab == tabControl)
