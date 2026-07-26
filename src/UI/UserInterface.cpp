@@ -57,7 +57,6 @@ static const size_t zprobeBufLength = 12;
 static const size_t generatedByTextLength = 50;
 static const size_t lastModifiedTextLength = 20;
 static const size_t printTimeTextLength = 12;		// e.g. 11h 55m
-static const size_t controlPageMacroTextLength = 50;
 static const size_t ipAddressLength = 45;	// IPv4 needs max 15 but IPv6 can go up to 45
 
 static String<ipAddressLength> ipAddress;
@@ -76,7 +75,6 @@ static SingleButton *changeCardButton;
 static TextButton *filenameButtons[NumDisplayedFiles];
 static TextButton *macroButtons[NumDisplayedMacros];
 static TextButton *controlPageMacroButtons[NumControlPageMacroButtons];
-static String<controlPageMacroTextLength> controlPageMacroText[NumControlPageMacroButtons];
 
 static PopupWindow *setTempPopup, *setRPMPopup, *movePopup, *fileListPopup, *macrosPopup, *fileDetailPopup, *baudPopup,
 		*volumePopup, *infoTimeoutPopup, *screensaverTimeoutPopup, *babystepAmountPopup, *feedrateAmountPopup, *areYouSurePopup, *keyboardPopup, *languagePopup, *coloursPopup, *screensaverPopup, *firmwareUpdatePopup;
@@ -86,7 +84,7 @@ static SingleButton *homeAllButton, *bedCompButton, *spindleButton;
 static IconButtonWithText *homeButtons[MaxDisplayableAxes], *toolButtons[MaxSlots];
 
 static bool spindleOnOff = false;                       // for CNC
-static uint32_t spindleRPM = 1000;                      // for CNC defines the spindle RPM
+static uint32_t spindleRPM = 24000;                     // for CNC defines the default spindle RPM; updated from the object model
 static bool bedCompensationOnOff = true;                 // switch bed compensation on/off
 
 static float axisMaxVal = 0.0;
@@ -103,6 +101,7 @@ static ProgressBar *printProgressBar;
 static SingleButton *tabControl, *tabStatus, *tabMsg, *tabSetup;
 static ButtonBase *filesButton, *pauseButton, *resumeButton, *cancelButton, *babystepButton, *reprintButton;
 static TextField *timeLeftField, *zProbe;
+static IntegerField *spindleRPMField;
 static TextField *fpNameField, *fpGeneratedByField, *fpLastModifiedField, *fpPrintTimeField;
 DrawDirect *fpThumbnail;
 static StaticTextField *moveAxisRows[MaxDisplayableAxes];
@@ -931,8 +930,9 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 		mgr.AddField(f);
 		f->Show(i < MaxDisplayableAxes);	// CNC: always show all 3 axes
 	}
-	zprobeBuf[0] = 0;
-	mgr.AddField(zProbe = new TextField(row7, margin, xyFieldWidth, TextAlignment::Right, "P", zprobeBuf.c_str()));
+	// Spindle RPM display (below the axis coordinates)
+	mgr.AddField(spindleRPMField = new IntegerField(row7, margin, xyFieldWidth, TextAlignment::Right, "S", nullptr));
+	spindleRPMField->SetValue(0);
 
 	// Home buttons (vertically arranged)
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
@@ -960,21 +960,6 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 	h = new TextButton(row7 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
 	mgr.AddField(h);
 
-	// WCS selection buttons (G54-G57), right-aligned
-	{
-		static const char * const wcsLabels[] = { "G54", "G55", "G56", "G57" };
-		const PixelNumber wcsButtonWidth = 100;
-		const PixelNumber wcsButtonSpacing = margin;
-		const PixelNumber wcsGroupWidth = 4 * wcsButtonWidth + 3 * wcsButtonSpacing;
-		const PixelNumber wcsStartX = DISPLAY_X - margin - wcsGroupWidth;
-		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
-		for (size_t i = 0; i < 4; ++i)
-		{
-			wcsButtons[i] = new TextButton(row4 - 2, wcsStartX + i * (wcsButtonWidth + wcsButtonSpacing), wcsButtonWidth, wcsLabels[i], evSendCommand, wcsLabels[i]);
-			mgr.AddField(wcsButtons[i]);
-		}
-	}
-
 	// CNC tool selection buttons (T0-T3), right-aligned
 	{
 		static const char * const toolLabels[] = { "T0", "T1", "T2", "T3" };
@@ -987,6 +972,21 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 		{
 			cncToolButtons[i] = new TextButton(row5 - 2, toolStartX + i * (toolButtonWidth + toolButtonSpacing), toolButtonWidth, toolLabels[i], evSelectTool, (int)i);
 			mgr.AddField(cncToolButtons[i]);
+		}
+	}
+
+	// WCS selection buttons (G54-G57), right-aligned
+	{
+		static const char * const wcsLabels[] = { "G54", "G55", "G56", "G57" };
+		const PixelNumber wcsButtonWidth = 100;
+		const PixelNumber wcsButtonSpacing = margin;
+		const PixelNumber wcsGroupWidth = 4 * wcsButtonWidth + 3 * wcsButtonSpacing;
+		const PixelNumber wcsStartX = DISPLAY_X - margin - wcsGroupWidth;
+		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
+		for (size_t i = 0; i < 4; ++i)
+		{
+			wcsButtons[i] = new TextButton(row4 - 2, wcsStartX + i * (wcsButtonWidth + wcsButtonSpacing), wcsButtonWidth, wcsLabels[i], evSendCommand, wcsLabels[i]);
+			mgr.AddField(wcsButtons[i]);
 		}
 	}
 
@@ -1326,6 +1326,8 @@ static void CreateMainPages(uint32_t language, const ColourScheme& colours)
 
 namespace UI
 {
+	static void UpdateSpindleOnOffButton();
+
 	static void Adjusting(ButtonPress bp)
 	{
 		fieldBeingAdjusted = bp;
@@ -1602,6 +1604,7 @@ namespace UI
 				cncToolButtons[i]->SetColours(colours->buttonTextColour, ((int32_t)i == currentTool) ? colours->homedButtonBackColour : colours->notHomedButtonBackColour);
 			}
 		}
+		UpdateSpindleOnOffButton();
 	}
 
 	enum TimesLeft { file, filament, slicer, max };
@@ -2114,7 +2117,10 @@ namespace UI
 	void UpdateZProbe(const char data[])
 	{
 		zprobeBuf.copy(data);
-		zProbe->SetChanged();
+		if (zProbe != nullptr)		// the CNC control tab shows the spindle RPM instead of the Z probe value
+		{
+			zProbe->SetChanged();
+		}
 	}
 
 	// Update the machine name
@@ -3501,29 +3507,17 @@ namespace UI
 	// Return true if this should be called again for the next button.
 	bool UpdateMacroShortList(unsigned int buttonIndex, const char * _ecv_array null fileName)
 	{
-#if (DISPLAY_X == 480)
-		const bool tooFewSpace = numToolColsUsed >= (MaxSlots - 1);
-#else
-		const bool tooFewSpace = numToolColsUsed > (MaxSlots - 2);
-#endif
-
-		if (buttonIndex >= ARRAY_SIZE(controlPageMacroButtons) || numToolColsUsed == 0 || tooFewSpace)
+		// The CNC control page does not display the macro short list: the buttons would
+		// overlap the Stop/Pause/Resume, WCS (G54-G57) and tool (T0-T3) button groups
+		// on the right-hand side and steal their touch events.
+		UNUSED(fileName);
+		if (buttonIndex < ARRAY_SIZE(controlPageMacroButtons))
 		{
-			return false;
+			TextButton * const f = controlPageMacroButtons[buttonIndex];
+			f->SetEvent(evNull, nullptr);
+			mgr.Show(f, false);
 		}
-
-		String<controlPageMacroTextLength>& str = controlPageMacroText[buttonIndex];
-		str.Clear();
-		const bool isFile = (fileName != nullptr);
-		if (isFile)
-		{
-			str.copy(fileName);
-		}
-		TextButton * const f = controlPageMacroButtons[buttonIndex];
-		f->SetText(SkipDigitsAndUnderscore(str.c_str()));
-		f->SetEvent((isFile) ? evMacroControlPage : evNull, str.c_str());
-		mgr.Show(f, isFile);
-		return true;
+		return false;
 	}
 
 	unsigned int GetNumScrolledFiles(bool filesNotMacros)
@@ -3585,9 +3579,13 @@ namespace UI
 			const int standbyEventValue = -1
 			)
 	{
-		mgr.Show(currentTemps[slot], showCurrent);
-		mgr.Show(activeTemps[slot], activeEvent != evNull);
-		mgr.Show(standbyTemps[slot], standbyEvent != evNull);
+		// CNC layout: the current/active/standby temperature fields are dummies placed
+		// off-screen; showing them makes the display controller wrap the coordinates and
+		// draw stray artefacts on screen, so keep them hidden.
+		UNUSED(showCurrent);
+		mgr.Show(currentTemps[slot], false);
+		mgr.Show(activeTemps[slot], false);
+		mgr.Show(standbyTemps[slot], false);
 
 		activeTemps[slot]->SetEvent(activeEvent, activeEventValue);
 		activeTemps[slot]->SetValue(0);
@@ -3600,7 +3598,7 @@ namespace UI
 		bedOrChamber->slot = MaxSlots;
 		if (slot < MaxSlots && bedOrChamber->heater > -1) {
 			bedOrChamber->slot = slot;
-			mgr.Show(toolButtons[slot], true);
+			mgr.Show(toolButtons[slot], false);		// CNC layout: tool/heater buttons are dummies and must stay hidden
 			ManageCurrentActiveStandbyFields(
 					slot,
 					true,
@@ -3642,7 +3640,7 @@ namespace UI
 				toolButtons[slot]->SetIntVal(tool->index);
 				toolButtons[slot]->SetPrintText(true);
 				toolButtons[slot]->SetIcon(hasSpindle ? IconSpindle : IconNozzle);
-				mgr.Show(toolButtons[slot], true);
+				mgr.Show(toolButtons[slot], false);		// CNC layout: tool/heater buttons are dummies and must stay hidden
 
 				mgr.Show(extrusionFactors[slot], hasExtruder);
 				if (hasExtruder)
@@ -3731,6 +3729,33 @@ namespace UI
 		AdjustControlPageMacroButtons();
 	}
 
+	// Update the Spindle on/off button so that it reflects the real spindle state from the object model.
+	// The button controls the spindle of the currently selected tool, or spindle 0 if no tool is selected.
+	static void UpdateSpindleOnOffButton()
+	{
+		const OM::Tool * const tool = (currentTool >= 0) ? OM::GetTool(currentTool) : nullptr;
+		const OM::Spindle * const spindle = (tool != nullptr && tool->spindle != nullptr) ? tool->spindle : OM::GetSpindle(0);
+		if (spindle == nullptr)
+		{
+			return;
+		}
+		if (spindle->active != 0)
+		{
+			spindleRPM = spindle->active;		// remember the last commanded RPM so the button restarts at that speed
+		}
+		spindleOnOff = (spindle->state != OM::SpindleState::stopped);
+		if (spindleButton != nullptr)
+		{
+			spindleButton->SetColours(colours->buttonTextColour, spindleOnOff ? colours->buttonRunning : colours->buttonStopped);
+		}
+		if (spindleRPMField != nullptr)
+		{
+			spindleRPMField->SetValue((spindle->state == OM::SpindleState::stopped) ? 0
+										: (spindle->state == OM::SpindleState::reverse) ? -(int)spindle->current
+											: (int)spindle->current);
+		}
+	}
+
 	void SetSpindleActive(size_t spindleIndex, int32_t activeRpm)
 	{
 		auto spindle = OM::GetOrCreateSpindle(spindleIndex);
@@ -3762,6 +3787,7 @@ namespace UI
 			}
 			return tool->slot < MaxSlots;
 		});
+		UpdateSpindleOnOffButton();
 	}
 
 	void UpdateSpindleCurrent(OM::Spindle* spindle)
@@ -3805,6 +3831,7 @@ namespace UI
 			}
 		}
 		UpdateSpindleCurrent(spindle);
+		UpdateSpindleOnOffButton();
 	}
 
 	void SetSpindleLimit(size_t spindleIndex, uint32_t value, bool max)
@@ -3835,6 +3862,7 @@ namespace UI
 		if (changed)
 		{
 			UpdateSpindleCurrent(spindle);
+			UpdateSpindleOnOffButton();
 		}
 	}
 
