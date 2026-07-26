@@ -70,6 +70,7 @@ namespace UI
 	extern void ClearAlert();
 	extern void ProcessSimpleAlert(const char* _ecv_array text);
 	extern void NewResponseReceived(const char* _ecv_array text);
+	extern void ShowStartupMessage(const char* _ecv_array text);
 	extern bool CanDimDisplay();
 	extern void UpdateFileLastModifiedText(const char data[]);
 	extern void UpdateFileGeneratedByText(const char data[]);

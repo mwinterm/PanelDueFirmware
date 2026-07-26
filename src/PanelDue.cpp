@@ -38,6 +38,7 @@
 #include <ObjectModel/PrinterStatus.hpp>
 #include "ControlCommands.hpp"
 #include "Library/Thumbnail.hpp"
+#include "Version.hpp"
 
 extern uint16_t _esplash[];							// defined in linker script
 
@@ -2489,6 +2490,9 @@ int main(void)
 
 	// Display the Control tab. This also refreshes the display.
 	UI::ShowDefaultPage();
+
+	// Show the firmware version and build timestamp so that the flashed build can be verified
+	UI::ShowStartupMessage("PanelDue " VERSION_TEXT);
 
 	// Sort the fieldTable
 	qsort(

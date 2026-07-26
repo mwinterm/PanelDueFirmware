@@ -234,6 +234,20 @@ target_include_directories( paneldue.elf PRIVATE
 
 target_link_libraries( paneldue.elf rrf )
 
+# src/PanelDue.cpp and src/UI/UserInterface.cpp embed VERSION_TEXT, which includes
+# __DATE__ / __TIME__. Incremental builds only recompile a source file when it (or
+# its headers) actually changed on disk, so without this the embedded build
+# timestamp would go stale whenever neither file was directly edited. Touch them
+# before every build so they are always recompiled and the timestamp stays current.
+add_custom_target( touch_version_sources
+	COMMAND ${CMAKE_COMMAND} -E touch
+		"${PROJECT_SOURCE_DIR}/src/PanelDue.cpp"
+		"${PROJECT_SOURCE_DIR}/src/UI/UserInterface.cpp"
+	COMMENT "Touching version-stamped sources to refresh build timestamp"
+	VERBATIM
+)
+add_dependencies( paneldue.elf touch_version_sources )
+
 add_custom_command( OUTPUT paneldue.bin
 	DEPENDS paneldue.elf
 	COMMAND arm-none-eabi-objcopy -O binary paneldue.elf paneldue.bin

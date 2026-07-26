@@ -960,9 +960,9 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 	h = new TextButton(row7 - 2, 3 * margin + xyFieldWidth + homeButtonWidth, setButtonWidth, "SetAll", evSendCommand, "G10 L20 X0 Y0 Z0");
 	mgr.AddField(h);
 
-	// CNC tool selection buttons (T0-T3), right-aligned
+	// CNC tool selection buttons (T1-T4), right-aligned
 	{
-		static const char * const toolLabels[] = { "T0", "T1", "T2", "T3" };
+		static const char * const toolLabels[] = { "T1", "T2", "T3", "T4" };
 		const PixelNumber toolButtonWidth = 100;
 		const PixelNumber toolButtonSpacing = margin;
 		const PixelNumber toolGroupWidth = 4 * toolButtonWidth + 3 * toolButtonSpacing;
@@ -970,7 +970,7 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
 		for (size_t i = 0; i < 4; ++i)
 		{
-			cncToolButtons[i] = new TextButton(row5 - 2, toolStartX + i * (toolButtonWidth + toolButtonSpacing), toolButtonWidth, toolLabels[i], evSelectTool, (int)i);
+			cncToolButtons[i] = new TextButton(row5 - 2, toolStartX + i * (toolButtonWidth + toolButtonSpacing), toolButtonWidth, toolLabels[i], evSelectTool, (int)(i + 1));
 			mgr.AddField(cncToolButtons[i]);
 		}
 	}
@@ -998,9 +998,9 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonStopped);
 	spindleButton = AddTextButton(row6p7, MaxDisplayableAxes + 1, MaxDisplayableAxes + 2, "Spindle", evSpindleOnOff, " ");
 
-	// ToolSet button (below Z-Probe)
+	// Tool Probe button (below Z-Probe)
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
-	AddTextButton(row7p7, MaxDisplayableAxes, MaxDisplayableAxes + 2, "ToolSet", evSendCommand, "M98 P\"toolset.g\"");
+	AddTextButton(row7p7, MaxDisplayableAxes, MaxDisplayableAxes + 2, "Tool Probe", evSendCommand, "M98 P\"ToolProbe.g\"");
 
 	// Bed compensation on/off button
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonRunning);
@@ -1601,7 +1601,7 @@ namespace UI
 		{
 			if (cncToolButtons[i] != nullptr)
 			{
-				cncToolButtons[i]->SetColours(colours->buttonTextColour, ((int32_t)i == currentTool) ? colours->homedButtonBackColour : colours->notHomedButtonBackColour);
+				cncToolButtons[i]->SetColours(colours->buttonTextColour, ((int32_t)(i + 1) == currentTool) ? colours->homedButtonBackColour : colours->notHomedButtonBackColour);
 			}
 		}
 		UpdateSpindleOnOffButton();
@@ -2271,8 +2271,19 @@ namespace UI
 		return alertMode < 2;
 	}
 
+	// Return true if the text is the network/IP address announcement that RRF or config.g emits after start-up
+	static bool IsIPAddressMessage(const char* _ecv_array text)
+	{
+		return strstr(text, "IP address") != nullptr
+			|| (ipAddress.c_str()[0] != 0 && strstr(text, ipAddress.c_str()) != nullptr);
+	}
+
 	void ProcessSimpleAlert(const char* _ecv_array text)
 	{
+		if (IsIPAddressMessage(text))									// suppress the IP address popup; the IP is shown on the Setup tab
+		{
+			return;
+		}
 		if (alertMode < 2)												// if the current alert doesn't require acknowledgement
 		{
 			if (isLandscape)
@@ -2290,6 +2301,10 @@ namespace UI
 	// Process a new response. This is treated like a simple alert except that it times out and isn't cleared by a "clear alert" command from the host.
 	void NewResponseReceived(const char* _ecv_array text)
 	{
+		if (IsIPAddressMessage(text))									// suppress the IP address popup; it is still recorded in the console log
+		{
+			return;
+		}
 		const bool isErrorMessage = StringStartsWith(text, "Error");
 		if (   alertMode < 2											// if the current alert doesn't require acknowledgement
 			&& !(currentTab == tabSetup || currentTab == tabMsg)		// don't show on setup tab or on console tab
@@ -2306,6 +2321,20 @@ namespace UI
 			whenAlertReceived = SystemTick::GetTickCount();
 			alertTicks = isErrorMessage ? 0 : infoTimeout * SystemTick::TicksPerSecond;				// time out if it isn't an error message
 		}
+	}
+
+	// Display a start-up information message. It times out and is not cleared by the host.
+	void ShowStartupMessage(const char* _ecv_array text)
+	{
+		if (isLandscape)
+		{
+			alertPopup->Set(strings->message, text, 1, 0);
+			mgr.SetPopup(alertPopup, AutoPlace, AutoPlace);
+		}
+		alertMode = -1;													// make sure that a call to ClearAlert doesn't clear us
+		displayingResponse = true;										// so that the close button and the timeout work
+		whenAlertReceived = SystemTick::GetTickCount();
+		alertTicks = 10 * SystemTick::TicksPerSecond;					// show for 10 seconds
 	}
 
 	// This is called when the user selects a new file from a list of SD card files
