@@ -340,6 +340,7 @@ void Window::Show(DisplayField * null f, bool v)
 {
 	if (f != nullptr && (f->IsVisible() != v || f->HasChanged()))
 	{
+		const bool wasVisible = f->IsVisible();
 		f->Show(v);
 
 		// Check whether the field is currently in the display list, if so then show or hide it
@@ -355,8 +356,12 @@ void Window::Show(DisplayField * null f, bool v)
 				{
 					f->Refresh(true, Xpos(), Ypos());
 				}
-				else
+				else if (wasVisible)
 				{
+					// Only erase the field's rectangle if it was actually visible before this call.
+					// If it was already hidden, nothing was ever drawn at its current position (which
+					// may be a stale/off-screen location for fields that were never shown), so erasing
+					// it here would just paint a stray rectangle wherever those coordinates land.
 					lcd.setColor(backgroundColour);
 					lcd.fillRect(f->GetMinX(), f->GetMinY(), f->GetMaxX(), f->GetMaxY());
 				}

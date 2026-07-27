@@ -114,6 +114,7 @@ static TextButtonWithLabel *babystepAmountButton;
 static SingleButton *moveButton, *macroButton;
 static TextButton *wcsButtons[4];
 static TextButton *cncToolButtons[4];
+static TextButton *probeToolButton;
 static PopupWindow *babystepPopup;
 static AlertPopup *alertPopup;
 static CharButtonRow *keyboardRows[4];
@@ -140,7 +141,6 @@ static String<maxUserCommandLength> userCommandBuffers[numUserCommandBuffers];
 static size_t currentUserCommandBuffer = 0, currentHistoryBuffer = 0;
 
 static unsigned int numToolColsUsed = 0;
-static unsigned int numHeaterAndToolColumns = 0;
 static int oldIntValue;
 static Event eventToConfirm = evNull;
 static uint8_t numVisibleAxes = 0;						// initialise to 0 so we refresh the macros list when we receive the number of axes
@@ -872,6 +872,11 @@ static void CreateCNCGrid(const ColourScheme& colours)
 		DisplayField::SetDefaultColours(colours.buttonTextColour, resumeColour, colours.buttonBorderColour, 0,
 										resumeColour, 0, colours.pal);
 		mgr.AddField(new TextButton(row2, startX + 2 * (cncBtnWidth + cncBtnSpacing), cncBtnWidth, strings->resume, evSendCommand, "M24"));
+
+		// Spindle on/off button, left of Stop
+		DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonStopped);
+		spindleButton = new TextButton(row2, startX - cncBtnSpacing - cncBtnWidth, cncBtnWidth, "Spindle", evSpindleOnOff, " ");
+		mgr.AddField(spindleButton);
 	}
 
 	// Add the labels and the debug field
@@ -990,13 +995,9 @@ static void CreateCNCControlTabFields(const ColourScheme& colours)
 		}
 	}
 
-	// Z-Probe button (left of Spindle)
-	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
-	AddTextButton(row6p7, MaxDisplayableAxes, MaxDisplayableAxes + 2, "Z-Probe", evSendCommand, "G30");
-
-	// Spindle on/off button
-	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonStopped);
-	spindleButton = AddTextButton(row6p7, MaxDisplayableAxes + 1, MaxDisplayableAxes + 2, "Spindle", evSpindleOnOff, " ");
+	// 3D-Probe button (selects tool T0, highlighted the same way as the T1-T4 tool buttons)
+	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.notHomedButtonBackColour);
+	probeToolButton = AddTextButton(row6p7, MaxDisplayableAxes, MaxDisplayableAxes + 2, "3D-Probe", evSelectTool, 0);
 
 	// Tool Probe button (below Z-Probe)
 	DisplayField::SetDefaultColours(colours.buttonTextColour, colours.buttonTextBackColour);
@@ -1483,18 +1484,7 @@ namespace UI
 #if DISPLAY_X == 800
 		mgr.Show(printTabAxisPos[slot], b);
 #endif
-		if (numDisplayedAxes < MaxDisplayableAxes)
-		{
-			mgr.Show(movePopupAxisPos[slot], b);		// the move popup axis positions occupy the last axis row of the move popup
-		}
-		else
-		{
-			// This is incremental and we might end up that this row is no longer available
-			for (size_t i = 0; i < MaxDisplayableAxes; ++i)
-			{
-				mgr.Show(movePopupAxisPos[i], false);
-			}
-		}
+		mgr.Show(movePopupAxisPos[slot], b);
 	}
 
 	void UpdateAxisPosition(size_t axisIndex, float fval)
@@ -1603,6 +1593,10 @@ namespace UI
 			{
 				cncToolButtons[i]->SetColours(colours->buttonTextColour, ((int32_t)(i + 1) == currentTool) ? colours->homedButtonBackColour : colours->notHomedButtonBackColour);
 			}
+		}
+		if (probeToolButton != nullptr)
+		{
+			probeToolButton->SetColours(colours->buttonTextColour, (currentTool == 0) ? colours->homedButtonBackColour : colours->notHomedButtonBackColour);
 		}
 		UpdateSpindleOnOffButton();
 	}
@@ -3556,38 +3550,11 @@ namespace UI
 
 	void AdjustControlPageMacroButtons()
 	{
-		const unsigned int n = numToolColsUsed;
-
-		if (n != numHeaterAndToolColumns)
-		{
-			numHeaterAndToolColumns = n;
-
-			// Adjust the width of the control page macro buttons, or hide them completely if insufficient room
-			PixelNumber controlPageMacroButtonsColumn = (PixelNumber)(((tempButtonWidth + fieldSpacing) * n) + bedColumn + fieldSpacing);
-			PixelNumber controlPageMacroButtonsWidth = (PixelNumber)((controlPageMacroButtonsColumn >= DisplayX - margin) ? 0 : DisplayX - margin - controlPageMacroButtonsColumn);
-			if (controlPageMacroButtonsWidth > maxControlPageMacroButtonsWidth)
-			{
-				controlPageMacroButtonsColumn += controlPageMacroButtonsWidth - maxControlPageMacroButtonsWidth;
-				controlPageMacroButtonsWidth = maxControlPageMacroButtonsWidth;
-			}
-
-			bool showControlPageMacroButtons = controlPageMacroButtonsWidth >= minControlPageMacroButtonsWidth;
-
-			for (TextButton *& b : controlPageMacroButtons)
-			{
-				const bool hasMacroAssigned = (b->GetEvent() != evNull);
-				if (showControlPageMacroButtons)
-				{
-					b->SetPositionAndWidth(controlPageMacroButtonsColumn, controlPageMacroButtonsWidth);
-				}
-				mgr.Show(b, showControlPageMacroButtons && hasMacroAssigned);
-			}
-
-			if (currentTab == tabControl)
-			{
-				mgr.Refresh(true);
-			}
-		}
+		// The CNC control page does not display the macro short list (see UpdateMacroShortList).
+		// Repositioning these buttons here used to trigger a background-colour repaint of their
+		// new rectangle on row2, which could land on top of the Stop/Pause/Resume/Spindle button
+		// group and briefly show as a stray coloured overlay. Since these buttons are never
+		// assigned a macro in this CNC fork, skip all of the reposition/show logic entirely.
 	}
 
 	void ResetToolAndHeaterStates() noexcept
